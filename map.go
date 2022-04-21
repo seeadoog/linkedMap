@@ -349,28 +349,31 @@ func unmarshalObject2Struct(path string, in *gjson.Result, v reflect.Value) (err
 		}
 		v.SetFloat(floatV)
 		return nil
-	//case reflect.Array:
-	//t := v.Type()
-	//if !in.IsArray(){
-	//	return fmt.Errorf("type of %s should be slice", path)
-	//}
-	//
-	//arType := reflect.ArrayOf(v.Len(), v.Type().Elem())
-	//arrv := reflect.New(arType)
-	//pointer := arrv.Pointer()
-	//eleSize := v.Type().Elem().Size()
-	////if v.Len() < len(arr) {
-	////	return fmt.Errorf("length of %s is %d . but target value length is %d", path, v.Len(), len(arr))
-	////}
-	//for i, vv := range arr {
-	//	elemV := reflect.New(v.Type().Elem())
-	//	err := unmarshalObject2Struct(path, vv, elemV)
-	//	if err != nil {
-	//		return err
-	//	}
-	//	memCopy(pointer+uintptr(i)*eleSize, elemV.Pointer(), eleSize)
-	//}
-	//v.Set(arrv.Elem())
+	case reflect.Array:
+		if !in.IsArray() {
+			return fmt.Errorf("type of %s should be slice", path)
+		}
+
+		arType := reflect.ArrayOf(v.Len(), v.Type().Elem())
+		arrv := reflect.New(arType)
+		pointer := arrv.Pointer()
+		eleSize := v.Type().Elem().Size()
+		//if v.Len() < len(arr) {
+		//	return fmt.Errorf("length of %s is %d . but target value length is %d", path, v.Len(), len(arr))
+		//}
+		in.ForEach(func(key, value gjson.Result) bool {
+			elemV := reflect.New(v.Type().Elem())
+			if key.Index >= v.Len() {
+				return false
+			}
+			err = unmarshalObject2Struct(path, &value, elemV)
+			if err != nil {
+				return false
+			}
+			memCopy(pointer+uintptr(key.Index)*eleSize, elemV.Pointer(), eleSize)
+			return true
+		})
+		v.Set(arrv.Elem())
 	default:
 		panic("not support :" + v.Kind().String())
 	}

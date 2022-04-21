@@ -22,6 +22,7 @@ func TestNew(t *testing.T) {
 type User struct {
 	Name string `json:"name"`
 	Age  int    `json:"age"`
+	Chs  [2]int `json:"chs"`
 }
 
 func TestNew2(t *testing.T) {
@@ -58,14 +59,7 @@ func TestNew2(t *testing.T) {
 }
 
 func TestMap(t *testing.T) {
-	m := New[User, User]()
-	m.Set(User{
-		Name: "g",
-	}, User{Name: "g"})
 
-	fmt.Println(m.Get(User{
-		Name: "g",
-	}))
 }
 
 func BenchmarkUnmarshal(b *testing.B) {
@@ -116,4 +110,15 @@ func BenchmarkUnmarshal2(b *testing.B) {
 		m := map[string]any{}
 		json.Unmarshal(js, &m)
 	}
+}
+
+func TestUm(t *testing.T) {
+	u := User{}
+
+	js := `{
+"chs":[1,2]
+}`
+	json.Unmarshal([]byte(js), &u)
+
+	fmt.Println(u)
 }
