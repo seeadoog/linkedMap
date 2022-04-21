@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"runtime"
+	"sync"
 	"testing"
 )
 
@@ -115,5 +117,68 @@ func BenchmarkUnmarshal2(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		m := map[string]any{}
 		json.Unmarshal(js, &m)
+	}
+}
+
+func BenchmarkName(b *testing.B) {
+	l := sync.Mutex{}
+	b.SetParallelism(10)
+	b.ReportAllocs()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			l.Lock()
+			l.Unlock()
+		}
+	})
+}
+
+func BenchmarkChan(b *testing.B) {
+	c := make(chan bool, 1)
+	c <- true
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			go func() {
+
+			}()
+		}
+	})
+}
+
+func BenchmarkGO(b *testing.B) {
+	c := make(chan bool, 1)
+	c <- true
+
+	b.ReportAllocs()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			runtime.Gosched()
+		}
+	})
+}
+
+func BenchmarkMaap(b *testing.B) {
+	m := map[string]int{}
+	b.ReportAllocs()
+	m["1"] = 5
+	for i := 0; i < b.N; i++ {
+		_ = m["1"]
+	}
+}
+
+func BenchmarkArr(b *testing.B) {
+	b.ReportAllocs()
+	a := make([]string, 30)
+	for i := 0; i < b.N; i++ {
+		for j := 0; j < len(a); j++ {
+
+		}
+	}
+}
+func BenchmarkMap2(b *testing.B) {
+	b.ReportAllocs()
+	a := New[string, int]()
+	a.Set("ee", 1)
+	for i := 0; i < b.N; i++ {
+		a.Get("ee")
 	}
 }
