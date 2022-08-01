@@ -185,19 +185,26 @@ func tostring(b []byte) string {
 var (
 	bytesType = reflect.TypeOf([]byte(nil))
 )
+var (
+	unmarshaller = reflect.TypeOf(new(json.Unmarshaler)).Elem()
+)
 
 func unmarshalObject2Struct(path string, in *gjson.Result, v reflect.Value) (err error) {
 	if in == nil {
+		return nil
+	}
+	if in.Type == gjson.Null {
 		return nil
 	}
 	// 是非导出的变量
 	if v.Kind() != reflect.Ptr && !v.CanSet() {
 		return nil
 	}
+	vt := v.Type()
 
 	switch {
 	// 目标是字节数组
-	case bytesType == v.Type():
+	case bytesType == vt:
 		if in.Type != gjson.String {
 			return fmt.Errorf("%s value type is byte , but field in json is not base64", path)
 		}
@@ -210,11 +217,23 @@ func unmarshalObject2Struct(path string, in *gjson.Result, v reflect.Value) (err
 		v.Set(reflect.ValueOf(bytes))
 		return nil
 	}
+	if v.Type().Implements(unmarshaller) {
+		var vvv interface{}
+		if vt.Kind() == reflect.Ptr && v.IsNil() {
+			vvv = reflect.New(vt.Elem()).Interface()
+		}
+		err := vvv.(json.Unmarshaler).UnmarshalJSON(stringtobytes(in.Raw))
+		if err != nil {
+			return err
+		}
+		v.Set(reflect.ValueOf(vvv))
+		return nil
+	}
 
 	switch v.Kind() {
 	case reflect.Ptr:
 		if v.IsNil() {
-			vt := v.Type()
+
 			elemType := vt.Elem()
 			var nv reflect.Value
 			switch elemType.Kind() {
@@ -233,7 +252,7 @@ func unmarshalObject2Struct(path string, in *gjson.Result, v reflect.Value) (err
 		if !in.IsArray() {
 			return fmt.Errorf("type of %s should be slice", path)
 		}
-		t := v.Type()
+		t := vt
 		elemType := t.Elem()
 		slice := reflect.MakeSlice(t, 0, 0)
 		in.ForEach(func(key, value gjson.Result) bool {
@@ -259,7 +278,7 @@ func unmarshalObject2Struct(path string, in *gjson.Result, v reflect.Value) (err
 		if !in.IsObject() {
 			return fmt.Errorf("type of %s should be object", path)
 		}
-		t := v.Type()
+		t := vt
 		elemT := t.Elem()
 		newV := v
 		if v.IsNil() {
@@ -278,7 +297,7 @@ func unmarshalObject2Struct(path string, in *gjson.Result, v reflect.Value) (err
 		v.Set(newV)
 		return nil
 	case reflect.Struct:
-		t := v.Type()
+		t := vt
 
 		if !in.IsObject() {
 			return fmt.Errorf("type of %s should be object", path)
@@ -416,6 +435,10 @@ func bytesOf(p uintptr, len uintptr) []byte {
 		Cap:  int(len),
 	}
 	return *(*[]byte)(unsafe.Pointer(h))
+}
+
+func stringtobytes(s string) []byte {
+	return *(*[]byte)(unsafe.Pointer(&s))
 }
 
 func memCopy(dst, src uintptr, len uintptr) {

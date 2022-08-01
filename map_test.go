@@ -3,6 +3,7 @@ package linkedMap
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/tidwall/gjson"
 	"reflect"
 	"testing"
 )
@@ -11,6 +12,7 @@ func TestNew(t *testing.T) {
 	m := New[string, any]()
 	m.Set("1", 5)
 	m.Set("2", 10)
+	m.Set("66", `"dddd"`)
 	m.Set("c", []interface{}{
 		1, 2, 3,
 	})
@@ -83,7 +85,7 @@ func BenchmarkUnmarshal(b *testing.B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		m := New[string, any]()
-		json.Unmarshal(js, m)
+		m.UnmarshalJSON(js)
 	}
 }
 
@@ -121,4 +123,75 @@ func TestUm(t *testing.T) {
 	json.Unmarshal([]byte(js), &u)
 
 	fmt.Println(u)
+}
+
+func BenchmarkGJSON(b *testing.B) {
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		var t Temp
+		t.Decode(`{"name":"haha","age":5,"sum":false}`)
+	}
+}
+
+func BenchmarkGJSON2(b *testing.B) {
+	b.ReportAllocs()
+	bs := []byte(`{"name":"haha","age":5,"sum":false}`)
+	for i := 0; i < b.N; i++ {
+		var t Temp
+		json.Unmarshal(bs, &t)
+	}
+}
+
+type Temp struct {
+	Name string `json:"name"`
+	Age  int64  `json:"age"`
+	Sum  bool
+	Big  string `json:"big"`
+	Ss   sss    `json:"ss"`
+}
+type sss string
+
+func (t *sss) UnmarshalJSON(b []byte) error {
+	*t = sss(string(b))
+	return nil
+}
+
+func (t *Temp) Decode(b string) {
+	res := gjson.Parse(b)
+	//t.Name = res.Get("name").String()
+	//t.Age = res.Get("age").Int()
+	//t.Sum = res.Get("sum").Bool()
+	res.ForEach(func(key, value gjson.Result) bool {
+		switch key.String() {
+		case "name":
+			t.Name = value.String()
+		case "age":
+			t.Age = value.Int()
+		case "sum":
+			t.Sum = value.Bool()
+		case "big":
+			t.Big = value.String()
+
+		}
+		return true
+	})
+}
+
+func TestJSON2(t *testing.T) {
+	m := New[string, Temp]()
+	err := json.Unmarshal([]byte(`{"ss":{"ss":"dd"}}`), m)
+	fmt.Println(err, m)
+	//tv, _ := m.Get("ss")
+	//fmt.Println(*tv.Ss)
+
+	//var a json.Unmarshaler = new(sss)
+
+}
+
+func TestJSON(t *testing.T) {
+	m := map[string]Temp{}
+	err := json.Unmarshal([]byte(`{"ss":{"ss":"dd"}}`), &m)
+	fmt.Println(err, m)
+
 }
