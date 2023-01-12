@@ -3,9 +3,10 @@ package linkedMap
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/tidwall/gjson"
 	"reflect"
 	"testing"
+
+	"github.com/tidwall/gjson"
 )
 
 func TestNew(t *testing.T) {
@@ -58,9 +59,29 @@ func TestNew2(t *testing.T) {
 		fmt.Println(k, v, reflect.TypeOf(v))
 		return true
 	})
+	ace, ok := m.Get("alice")
+	if ok {
+		fmt.Println(reflect.TypeOf(ace.([]any)[0]))
+	}
+
 }
 
 func TestMap(t *testing.T) {
+	a := New[string, *Map[string, any]]()
+	js := `
+	{
+		"name":{
+			"anc":5
+		}
+	}
+	
+	`
+	err := json.Unmarshal([]byte(js), a)
+	if err != nil {
+		panic(err)
+	}
+	m, _ := a.Get("name")
+	fmt.Println(m.Get("anc"))
 
 }
 

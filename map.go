@@ -7,8 +7,7 @@ import (
 	"reflect"
 	"strings"
 	"unsafe"
-)
-import (
+
 	"github.com/tidwall/gjson"
 )
 
@@ -102,7 +101,12 @@ func (m *Map[K, V]) MarshalJSON() (res []byte, err error) {
 func (m *Map[K, V]) UnmarshalJSON(b []byte) (err error) {
 	_, ok := m.testK.(string)
 	if !ok {
-		panic(fmt.Sprintf("json unmarshal key type must be string: but now is %s", reflect.TypeOf(m.testK)))
+		if m.testK == nil {
+			m.testK = ""
+		} else {
+			panic(fmt.Sprintf("json unmarshal key type must be string: but now is %s", reflect.TypeOf(m.testK)))
+
+		}
 	}
 	if m.elem == nil {
 		m.elem = make(map[K]*Elem[K, V])
