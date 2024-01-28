@@ -13,12 +13,13 @@ func TestNew(t *testing.T) {
 	m := New[string, any]()
 	m.Set("1", 5)
 	m.Set("2", 10)
-	m.Set("66", `"dddd"`)
+	m.Set("\"66", `"dddd"
+	`)
 	m.Set("c", []interface{}{
 		1, 2, 3,
 	})
 	m.Of("1", 4).Of("adf", New[string, any]().Of("name", "bon").Of("haha", 3))
-	b, _ := json.Marshal(m)
+	b, _ := m.MarshalJSON()
 	fmt.Println(string(b))
 }
 
@@ -216,3 +217,43 @@ func TestJSON(t *testing.T) {
 	fmt.Println(err, m)
 
 }
+
+func Test_GOOO(t *testing.T) {
+
+}
+
+func Test_Unmarshal(t *testing.T) {
+	js := `
+	{
+		"key":{
+			"kls":{
+				"age":0
+			}
+		},
+		"vals":{
+			"kls":{
+				"age":5
+			}
+		}
+	}
+	
+	`
+	type A struct {
+		Age int `json:"age,omitempty"`
+	}
+
+	res := New[string, *Map[string, *A]]()
+
+	err := json.Unmarshal([]byte(js), res)
+	if err != nil {
+		panic(err)
+	}
+
+	ns, _ := res.MarshalJSON()
+
+	fmt.Println(res, string(ns))
+}
+
+/*
+
+ */

@@ -70,6 +70,7 @@ func (m *Map[K, V]) Range(f func(key K, val V) bool) {
 }
 
 func (m *Map[K, V]) MarshalJSON() (res []byte, err error) {
+	// fmt.Println("marshalJSON")
 	res = make([]byte, 0, 128)
 	lenght := 0
 	res = append(res, '{')
@@ -79,9 +80,11 @@ func (m *Map[K, V]) MarshalJSON() (res []byte, err error) {
 		if err != nil {
 			return false
 		}
-		res = append(res, '"')
-		res = append(res, stringOf(e.Key)...)
-		res = append(res, '"')
+		key, _ := json.Marshal(e.Key)
+		// res = append(res, '"')
+		// res = append(res, stringOf(e.Key)...)
+		// res = append(res, '"')
+		res = append(res, key...)
 		res = append(res, ':')
 		res = append(res, vb...)
 		res = append(res, ',')
@@ -119,6 +122,9 @@ func (m *Map[K, V]) UnmarshalJSON(b []byte) (err error) {
 		return fmt.Errorf("value is not object:%v", p.Type)
 	}
 	p.ForEach(func(key, value gjson.Result) bool {
+		if value.Type == gjson.Null {
+			return true
+		}
 		e := new(V)
 		err = unmarshalObject2Struct(key.Str, &value, reflect.ValueOf(e).Elem())
 		if err != nil {
@@ -224,6 +230,7 @@ func unmarshalObject2Struct(path string, in *gjson.Result, v reflect.Value) (err
 		return nil
 	}
 	if v.Type().Implements(unmarshaller) {
+		// fmt.Println("oi")
 		var vvv interface{}
 		if vt.Kind() == reflect.Ptr && v.IsNil() {
 			vvv = reflect.New(vt.Elem()).Interface()
@@ -315,10 +322,11 @@ func unmarshalObject2Struct(path string, in *gjson.Result, v reflect.Value) (err
 		})
 		for i := 0; i < t.NumField(); i++ {
 			fieldT := t.Field(i)
-			name := fieldT.Tag.Get("json")
+			name, _, _ := strings.Cut(fieldT.Tag.Get("json"), ",")
 			if name == "" {
 				name = fieldT.Name
 			}
+
 			if fieldT.Anonymous {
 				err := unmarshalObject2Struct(name, in, v.Field(i))
 				if err != nil {
